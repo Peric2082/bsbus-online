@@ -140,7 +140,7 @@
 
         async function carregarFrota() {
             try {
-                const res = await fetch('https://bsbus-online-5.onrender.com/api/bsbus/frota');');
+                const res = await fetch('https://bsbus-online-5.onrender.com/api/bsbus/frota');
                 let dados = await res.json();
                 dadosFrota = dados.map(c => {
                     if (estaDentroDoPoligono(c.lat, c.lon, perimetroGaragem)) c.status = 'garagem';
