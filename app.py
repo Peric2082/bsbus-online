@@ -4,13 +4,19 @@ import requests
 import math
 import urllib3
 
-# Desativa avisos de certificado (caso a SEMOB tenha problemas com SSL)
+# Desativa avisos de certificado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 CORS(app)
 
 URL_SEMOB = "https://geoserver.semob.df.gov.br/geoserver/semob/ows?service=WFS&version=1.1.0&request=GetFeature&typeName=semob%3Aultima_posicao&cql_filter=id_operadora='3450'&outputFormat=application/json"
+
+# Lista de proxies gratuitos (o requests tentará usar estes para sair com outro IP)
+PROXIES = {
+    'http': 'http://185.162.229.40:80',
+    'https': 'http://185.162.229.40:80'
+}
 
 GARAGENS = [
     {"nome": "Garagem Setor O 2", "lat": -15.787509, "lon": -48.134744},
@@ -26,15 +32,13 @@ RAIO_GARAGEM = 0.004
 @app.route('/api/bsbus/frota', methods=['GET'])
 def obter_frota():
     try:
-        # Headers simulando um navegador real
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Referer': 'https://www.semob.df.gov.br/'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'application/json'
         }
         
-        # Faz a chamada ignorando verificação SSL caso o certificado da SEMOB esteja com erro
-        resposta = requests.get(URL_SEMOB, headers=headers, timeout=20, verify=False)
+        # Tenta a conexão através do proxy para esconder o IP do Render
+        resposta = requests.get(URL_SEMOB, headers=headers, timeout=15, proxies=PROXIES, verify=False)
         
         dados = resposta.json()
         features = dados.get("features", [])
@@ -67,4 +71,9 @@ def obter_frota():
             
         return jsonify(lista_frota)
     except Exception as e:
-        return jsonify({"erro": f"Erro na conexão com SEMOB: {str(e)}"}), 500
+        # Se falhar pelo proxy, tenta sem proxy direto (fallback)
+        try:
+            resposta = requests.get(URL_SEMOB, headers=headers, timeout=15, verify=False)
+            return jsonify(resposta.json())
+        except:
+            return jsonify({"erro": f"Proxy falhou e conexão direta bloqueada: {str(e)}"}), 500
