@@ -2,6 +2,10 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 import requests
 import math
+import urllib3
+
+# Desativa avisos de certificado (caso a SEMOB tenha problemas com SSL)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 CORS(app)
@@ -22,8 +26,16 @@ RAIO_GARAGEM = 0.004
 @app.route('/api/bsbus/frota', methods=['GET'])
 def obter_frota():
     try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        resposta = requests.get(URL_SEMOB, headers=headers, timeout=30)
+        # Headers simulando um navegador real
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://www.semob.df.gov.br/'
+        }
+        
+        # Faz a chamada ignorando verificação SSL caso o certificado da SEMOB esteja com erro
+        resposta = requests.get(URL_SEMOB, headers=headers, timeout=20, verify=False)
+        
         dados = resposta.json()
         features = dados.get("features", [])
         lista_frota = []
@@ -55,4 +67,4 @@ def obter_frota():
             
         return jsonify(lista_frota)
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        return jsonify({"erro": f"Erro na conexão com SEMOB: {str(e)}"}), 500
